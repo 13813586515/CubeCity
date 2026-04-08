@@ -51,7 +51,7 @@ export function useBuilding() {
 
   // 处理建筑操作的对话框配置
   const getDialogConfig = (action, buildingType, level = 1) => {
-    let buildingLevel = resolveBuildingLevel(action, buildingType, level)
+    const buildingLevel = resolveBuildingLevel(action, buildingType, level)
     if (action === 'upgrade' && !buildingLevel) {
       gameState.addToast(t('error.noNextLevel'), 'error')
       return null
