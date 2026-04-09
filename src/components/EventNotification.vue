@@ -2,7 +2,7 @@
 import { EVENT_CATEGORIES } from '@/constants/events.js'
 import { useGameState } from '@/stores/useGameState.js'
 import { storeToRefs } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 
 const props = defineProps({
   eventData: {
@@ -21,6 +21,8 @@ const gameState = useGameState()
 const { language } = storeToRefs(gameState)
 
 const isVisible = ref(true)
+const autoCloseTimer = ref(null)
+const countdown = ref(5)
 
 const categoryClass = computed(() => {
   switch (props.eventData.category) {
@@ -58,7 +60,8 @@ const effectDescription = computed(() => {
     const percent = Math.round((effects.incomeMultiplier - 1) * 100)
     if (lang === 'zh') {
       descriptions.push(percent > 0 ? `收入 +${percent}%` : `收入 ${percent}%`)
-    } else {
+    }
+    else {
       descriptions.push(percent > 0 ? `Income +${percent}%` : `Income ${percent}%`)
     }
   }
@@ -67,7 +70,8 @@ const effectDescription = computed(() => {
     const percent = Math.round((effects.powerMultiplier - 1) * 100)
     if (lang === 'zh') {
       descriptions.push(percent > 0 ? `发电量 +${percent}%` : `发电量 ${percent}%`)
-    } else {
+    }
+    else {
       descriptions.push(percent > 0 ? `Power +${percent}%` : `Power ${percent}%`)
     }
   }
@@ -76,7 +80,8 @@ const effectDescription = computed(() => {
     const percent = Math.round((effects.populationMultiplier - 1) * 100)
     if (lang === 'zh') {
       descriptions.push(percent > 0 ? `人口 +${percent}%` : `人口 ${percent}%`)
-    } else {
+    }
+    else {
       descriptions.push(percent > 0 ? `Population +${percent}%` : `Population ${percent}%`)
     }
   }
@@ -84,7 +89,8 @@ const effectDescription = computed(() => {
   if (effects.creditLoss !== undefined) {
     if (lang === 'zh') {
       descriptions.push(`损失 ${effects.creditLoss} 金币`)
-    } else {
+    }
+    else {
       descriptions.push(`Lost ${effects.creditLoss} credits`)
     }
   }
@@ -92,7 +98,8 @@ const effectDescription = computed(() => {
   if (effects.stabilityLoss !== undefined) {
     if (lang === 'zh') {
       descriptions.push(`稳定度 -${effects.stabilityLoss}`)
-    } else {
+    }
+    else {
       descriptions.push(`Stability -${effects.stabilityLoss}`)
     }
   }
@@ -100,7 +107,8 @@ const effectDescription = computed(() => {
   if (effects.stabilityGain !== undefined) {
     if (lang === 'zh') {
       descriptions.push(`稳定度 +${effects.stabilityGain}`)
-    } else {
+    }
+    else {
       descriptions.push(`Stability +${effects.stabilityGain}`)
     }
   }
@@ -108,7 +116,8 @@ const effectDescription = computed(() => {
   if (effects.coinBonus !== undefined) {
     if (lang === 'zh') {
       descriptions.push(`获得 ${effects.coinBonus} 金币`)
-    } else {
+    }
+    else {
       descriptions.push(`Received ${effects.coinBonus} credits`)
     }
   }
@@ -116,7 +125,8 @@ const effectDescription = computed(() => {
   if (effects.investment !== undefined) {
     if (lang === 'zh') {
       descriptions.push(`获得 ${effects.investment} 金币投资`)
-    } else {
+    }
+    else {
       descriptions.push(`Received ${effects.investment} credits investment`)
     }
   }
@@ -124,18 +134,70 @@ const effectDescription = computed(() => {
   return descriptions
 })
 
+function startAutoClose() {
+  if (autoCloseTimer.value) {
+    clearInterval(autoCloseTimer.value)
+  }
+
+  countdown.value = 5
+
+  autoCloseTimer.value = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      onClose()
+    }
+  }, 1000)
+}
+
+function stopAutoClose() {
+  if (autoCloseTimer.value) {
+    clearInterval(autoCloseTimer.value)
+    autoCloseTimer.value = null
+  }
+}
+
 function onClose() {
+  stopAutoClose()
   isVisible.value = false
   setTimeout(() => {
     emits('close')
   }, 300)
 }
+
+watch(isVisible, (newVal) => {
+  if (newVal) {
+    startAutoClose()
+  }
+  else {
+    stopAutoClose()
+  }
+}, { immediate: true })
+
+onUnmounted(() => {
+  stopAutoClose()
+})
 </script>
 
 <template>
   <transition name="fade">
     <div v-if="isVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60" @click.self="onClose">
-      <div class="relative bg-[#181c24] shadow-lg px-6 py-8 min-w-[320px] max-w-[90vw] w-[500px] border rounded-lg" :class="categoryClass.border">
+      <div
+        class="relative bg-[#181c24] shadow-lg px-6 py-8 min-w-[320px] max-w-[90vw] w-[500px] border rounded-lg"
+        :class="categoryClass.border"
+        @mouseenter="stopAutoClose"
+        @mouseleave="startAutoClose"
+      >
+        <!-- 自动关闭倒计时 -->
+        <div class="absolute top-2 left-4 flex items-center gap-2 text-xs text-gray-400">
+          <span>{{ language === 'zh' ? '自动关闭' : 'Auto close' }}</span>
+          <span
+            class="font-bold px-2 py-0.5 rounded"
+            :style="{ backgroundColor: `${categoryClass.color}20`, color: categoryClass.color }"
+          >
+            {{ countdown }}s
+          </span>
+        </div>
+
         <!-- 关闭按钮 -->
         <button
           class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full text-xl font-bold text-gray-400 hover:bg-gray-700 hover:text-white transition-colors duration-150 focus:outline-none z-10"
@@ -145,11 +207,11 @@ function onClose() {
         </button>
 
         <!-- 事件类型标签 -->
-        <div class="text-center mb-2">
+        <div class="text-center mb-2 mt-4">
           <span
             class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
             :style="{
-              backgroundColor: categoryClass.color + '20',
+              backgroundColor: `${categoryClass.color}20`,
               color: categoryClass.color,
               border: `1px solid ${categoryClass.color}`,
             }"
@@ -187,7 +249,7 @@ function onClose() {
               :key="index"
               class="px-3 py-1 rounded text-sm font-medium"
               :style="{
-                backgroundColor: categoryClass.color + '15',
+                backgroundColor: `${categoryClass.color}15`,
                 color: categoryClass.color,
                 border: `1px solid ${categoryClass.color}40`,
               }"
@@ -212,6 +274,11 @@ function onClose() {
             {{ language === 'zh' ? '知道了' : 'Got it' }}
           </button>
         </div>
+
+        <!-- 提示文字 -->
+        <p class="text-center text-gray-500 text-xs mt-3">
+          {{ language === 'zh' ? '鼠标悬停暂停倒计时，点击任意位置或按钮关闭' : 'Hover to pause, click anywhere or button to close' }}
+        </p>
 
         <!-- 发光边框 -->
         <div

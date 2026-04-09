@@ -77,7 +77,7 @@ function onClose() {
 <template>
   <transition name="fade">
     <div v-if="isVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60" @click.self="onClose">
-      <div class="relative bg-[#181c24] shadow-lg px-6 py-6 min-w-[320px] max-w-[90vw] w-[700px] max-h-[80vh] border-2 border-gray-600 rounded-lg overflow-hidden flex flex-col">
+      <div class="relative bg-[#181c24] shadow-lg px-6 py-4 min-w-[320px] max-w-[90vw] w-[700px] max-h-[85vh] border-2 border-gray-600 rounded-lg overflow-hidden flex flex-col">
         <!-- 关闭按钮 -->
         <button
           class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full text-xl font-bold text-gray-400 hover:bg-gray-700 hover:text-white transition-colors duration-150 focus:outline-none z-10"
@@ -120,7 +120,7 @@ function onClose() {
         </div>
 
         <!-- 内容区域 -->
-        <div class="flex-1 overflow-y-auto pr-2">
+        <div class="flex-1 overflow-y-auto pr-2 pb-8">
           <!-- 当前事件 -->
           <div v-if="activeTab === 'active'">
             <div v-if="activeEventsWithDetails.length === 0" class="text-center py-12">
