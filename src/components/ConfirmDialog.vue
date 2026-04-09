@@ -1,5 +1,4 @@
 <script setup>
-import { useGameState } from '@/stores/useGameState'
 import { computed } from 'vue'
 
 const props = defineProps({

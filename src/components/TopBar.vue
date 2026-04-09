@@ -1,17 +1,28 @@
 <script setup>
+import { EVENT_DATA } from '@/constants/events.js'
 import { eventBus } from '@/js/utils/event-bus.js'
 import { useGameState } from '@/stores/useGameState.js'
 import { storeToRefs } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import AnimatedNumber from './AnimatedNumber.vue'
 import AudioManager from './AudioManager.vue'
+import EventDashboard from './EventDashboard.vue'
+import EventIndicator from './EventIndicator.vue'
+import EventNotification from './EventNotification.vue'
 import GuideModal from './GuideModal.vue'
 
 const gameState = useGameState()
-const { credits, totalJobs, maxPopulation, territory, citySize, cityLevel, cityName, language, showMapOverview, gameDay, power, maxPower, musicEnabled, musicVolume, isPlayingMusic } = storeToRefs(gameState)
+const { credits, totalJobs, maxPopulation, territory, citySize, cityLevel, cityName, language, showMapOverview, gameDay, power, maxPower, musicEnabled, musicVolume, isPlayingMusic, activeEvents } = storeToRefs(gameState)
 
 // 音乐相关
 const showVolumeSlider = ref(false)
+
+// 事件看板状态
+const showEventDashboard = ref(false)
+
+// 事件通知状态
+const pendingEventNotifications = ref([])
+const currentNotification = ref(null)
 
 // 音乐控制方法
 function toggleMusic() {
@@ -65,6 +76,72 @@ function toggleGuide() {
 function showGuideModal() {
   showGuide.value = true
 }
+
+// 打开事件看板
+function openEventDashboard() {
+  showEventDashboard.value = true
+}
+
+// 关闭事件看板
+function closeEventDashboard() {
+  showEventDashboard.value = false
+}
+
+// 处理活跃事件变化，显示通知
+function handleActiveEventsChange(newEvents, oldEvents) {
+  if (!oldEvents)
+    oldEvents = []
+
+  // 找出新增的事件
+  const _newEventIds = newEvents.map(e => e.id)
+  const oldEventIds = oldEvents.map(e => e.id)
+
+  const addedEvents = newEvents.filter(e => !oldEventIds.includes(e.id))
+
+  addedEvents.forEach((event) => {
+    const eventData = EVENT_DATA[event.eventId]
+    if (eventData) {
+      pendingEventNotifications.value.push({
+        eventData,
+        effects: event.effects,
+        id: Date.now() + Math.random(),
+      })
+    }
+  })
+
+  // 显示下一个通知
+  showNextNotification()
+}
+
+function showNextNotification() {
+  if (currentNotification.value || pendingEventNotifications.value.length === 0) {
+    return
+  }
+
+  currentNotification.value = pendingEventNotifications.value.shift()
+}
+
+function onNotificationClose() {
+  currentNotification.value = null
+  // 延迟显示下一个通知
+  setTimeout(() => {
+    showNextNotification()
+  }, 500)
+}
+
+// 监听活跃事件变化
+watch(activeEvents, handleActiveEventsChange, { deep: true })
+
+onMounted(() => {
+  // 初始化时检查是否有活跃事件
+  if (activeEvents.value.length > 0) {
+    // 不显示历史事件的通知
+  }
+})
+
+onUnmounted(() => {
+  // 清理
+})
 </script>
 
 <template>
@@ -148,12 +225,14 @@ function showGuideModal() {
           </div>
         </div>
 
-        <!-- 按钮区域 - 两列布局 -->
-        <div class="grid grid-cols-3 gap-2">
+        <!-- 按钮区域 - 三列布局 -->
+        <div class="grid grid-cols-4 gap-2">
           <!-- 第一行 -->
           <button class="px-2 py-1 rounded bg-gray-700 text-white text-sm font-medium hover:bg-gray-600 transition" @click="toggleLang">
             {{ language === 'zh' ? 'EN' : '中' }}
           </button>
+
+          <EventIndicator @open-dashboard="openEventDashboard" />
 
           <button
             class="px-3 col-span-2 py-1 rounded bg-industrial-green text-white text-sm font-bold shadow hover:bg-industrial-green/80 transition"
@@ -202,7 +281,7 @@ function showGuideModal() {
           </div>
 
           <button
-            class="px-3 col-span-2 py-1 rounded bg-industrial-accent text-white text-sm font-bold shadow hover:bg-industrial-accent/80 transition"
+            class="px-3 col-span-3 py-1 rounded bg-industrial-accent text-white text-sm font-bold shadow hover:bg-industrial-accent/80 transition"
             @click="toggleMapOverview"
           >
             {{ language === 'zh' ? (showMapOverview ? '🗺️ 隐藏' : '🗺️ 地图') : (showMapOverview ? '🗺️ Hide' : '🗺️ Map') }}
@@ -220,6 +299,20 @@ function showGuideModal() {
 
     <!-- 音频管理器 -->
     <AudioManager />
+
+    <!-- 事件看板 -->
+    <EventDashboard
+      :is-visible="showEventDashboard"
+      @close="closeEventDashboard"
+    />
+
+    <!-- 事件通知弹窗 -->
+    <EventNotification
+      v-if="currentNotification"
+      :event-data="currentNotification.eventData"
+      :effects="currentNotification.effects"
+      @close="onNotificationClose"
+    />
   </header>
 </template>
 
