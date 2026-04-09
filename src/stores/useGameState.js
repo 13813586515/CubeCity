@@ -574,11 +574,6 @@ export const useGameState = defineStore('gameState', {
         return
       }
 
-      // 全局触发概率检查
-      if (EVENT_CONFIG.GLOBAL_TRIGGER_CHANCE !== undefined && Math.random() > EVENT_CONFIG.GLOBAL_TRIGGER_CHANCE) {
-        return
-      }
-
       // 获取所有满足条件的事件
       const eligibleEvents = Object.values(EVENT_DATA).filter((event) => {
         // 检查是否已经有同类型的活跃事件
@@ -594,13 +589,13 @@ export const useGameState = defineStore('gameState', {
         return
 
       // 随机选择一个事件
-      // 根据概率权重选择，并应用概率乘数
-      const totalWeight = eligibleEvents.reduce((sum, e) => sum + (e.probability * EVENT_CONFIG.BASE_PROBABILITY_MULTIPLIER), 0)
+      // 根据概率权重选择
+      const totalWeight = eligibleEvents.reduce((sum, e) => sum + e.probability, 0)
       let random = Math.random() * totalWeight
 
       let selectedEvent = null
       for (const event of eligibleEvents) {
-        random -= event.probability * EVENT_CONFIG.BASE_PROBABILITY_MULTIPLIER
+        random -= event.probability
         if (random <= 0) {
           selectedEvent = event
           break
@@ -608,7 +603,7 @@ export const useGameState = defineStore('gameState', {
       }
 
       if (!selectedEvent) {
-        return
+        selectedEvent = eligibleEvents[Math.floor(Math.random() * eligibleEvents.length)]
       }
 
       // 应用事件效果
